@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memotest 日本語</title>
+<style>
+  :root {
+    --fondo: #f5f0e6;
+    --panel: #fffdf8;
+    --tinta: #1f1d1a;
+    --suave: #6b655c;
+    --linea: #d9d1c3;
+    --rojo: #b8322a;
+    --rojo-osc: #8e241e;
+    --verde: #2f7a4f;
+    --sombra: 0 2px 8px rgba(40, 30, 20, .12);
+    --jp: "Noto Sans JP", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Hiragino Sans", sans-serif;
+    --ui: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo: #1b1917; --panel: #26231f; --tinta: #f1ece3; --suave: #aaa197;
+      --linea: #3d3832; --rojo: #c9463c; --rojo-osc: #9c3027; --verde: #4fa874;
+      --sombra: 0 2px 8px rgba(0, 0, 0, .4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--fondo); color: var(--tinta); font-family: var(--ui);
+    display: flex; flex-direction: column;
+  }
+  button { font: inherit; cursor: pointer; }
+  .oculto { display: none !important; }
+
+  /* ---------- MENÚ ---------- */
+  #menu { flex: 1; display: grid; place-items: center; padding: 24px 16px; }
+  .caja {
+    background: var(--panel); border: 1px solid var(--linea); border-radius: 14px;
+    box-shadow: var(--sombra); padding: 28px 28px 24px; width: min(520px, 100%);
+  }
+  h1 { margin: 0 0 4px; font-size: 28px; display: flex; gap: 10px; align-items: baseline; }
+  h1 .jp { font-family: var(--jp); color: var(--rojo); }
+  .sub { margin: 0 0 22px; color: var(--suave); font-size: 14px; }
+  .grupo { margin-bottom: 18px; }
+  .grupo > span { display: block; font-size: 13px; font-weight: 600; color: var(--suave);
+    text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+  .opciones { display: flex; flex-wrap: wrap; gap: 8px; }
+  .op {
+    border: 1px solid var(--linea); background: transparent; color: var(--tinta);
+    border-radius: 999px; padding: 7px 14px; font-size: 14px;
+  }
+  .op:hover { border-color: var(--suave); }
+  .op.activo { background: var(--tinta); color: var(--panel); border-color: var(--tinta); }
+  .ayuda { font-size: 13px; color: var(--suave); margin-top: 6px; min-height: 1.2em; }
+  .principal {
+    width: 100%; margin-top: 8px; padding: 13px; border: 0; border-radius: 10px;
+    background: var(--rojo); color: #fff; font-size: 17px; font-weight: 600;
+  }
+  .principal:hover { background: var(--rojo-osc); }
+  .pie { margin-top: 14px; font-size: 12px; color: var(--suave); text-align: center; }
+
+  /* ---------- BARRA DE JUEGO ---------- */
+  #barra {
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+    padding: 10px 16px; border-bottom: 1px solid var(--linea); background: var(--panel);
+  }
+  #barra .dato { font-size: 14px; color: var(--suave); }
+  #barra .dato b { color: var(--tinta); font-variant-numeric: tabular-nums; }
+  #barra .espacio { flex: 1; }
+  .sec {
+    border: 1px solid var(--linea); background: transparent; color: var(--tinta);
+    border-radius: 8px; padding: 6px 12px; font-size: 14px;
+  }
+  .sec:hover { border-color: var(--suave); }
+
+  /* ---------- TABLERO ---------- */
+  #zona { flex: 1; display: grid; place-items: center; padding: 14px; overflow: hidden; }
+  #tablero { display: grid; gap: var(--gap, 10px); }
+  .carta {
+    width: var(--w); height: var(--h); perspective: 900px; border: 0; padding: 0;
+    background: transparent;
+  }
+  .giro {
+    position: relative; width: 100%; height: 100%; transition: transform .35s ease;
+    transform-style: preserve-3d;
+  }
+  .carta.vista .giro, .carta.hecha .giro { transform: rotateY(180deg); }
+  .cara {
+    position: absolute; inset: 0; border-radius: 10px; backface-visibility: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: var(--sombra);
+  }
+  .dorso {
+    background: var(--rojo);
+    background-image: radial-gradient(circle at 50% 50%, rgba(255,255,255,.95) 0 17%, transparent 18%),
+      repeating-linear-gradient(45deg, rgba(0,0,0,.06) 0 6px, transparent 6px 12px);
+    border: 3px solid rgba(255,255,255,.35);
+  }
+  .carta:not(.vista):not(.hecha):hover .dorso { filter: brightness(1.08); }
+  .frente {
+    transform: rotateY(180deg); background: var(--panel); border: 2px solid var(--tinta);
+    padding: 6%; text-align: center; gap: 4%;
+  }
+  .carta.hecha .frente { border-color: var(--verde); }
+  .carta.hecha { cursor: default; }
+  .kana { font-family: var(--jp); font-weight: 700; font-size: var(--fk); line-height: 1.1;
+    white-space: nowrap; }
+  .romaji { font-size: var(--fr); color: var(--suave); }
+  .es { font-size: var(--fe); color: var(--suave); line-height: 1.2; max-width: 100%; }
+  .solo-es .es { font-size: calc(var(--fk) * .62); color: var(--tinta); font-weight: 600; }
+
+  /* ---------- FINAL ---------- */
+  #final { position: fixed; inset: 0; background: rgba(20, 15, 10, .55);
+    display: grid; place-items: center; padding: 16px; }
+  #final .caja { max-height: 90vh; overflow: auto; }
+  .resumen { display: flex; gap: 12px; margin: 14px 0 18px; }
+  .resumen div { flex: 1; background: var(--fondo); border-radius: 10px; padding: 10px; text-align: center; }
+  .resumen b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; }
+  .resumen small { color: var(--suave); font-size: 12px; }
+  .record { color: var(--verde); font-weight: 600; font-size: 14px; margin: -6px 0 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 16px; }
+  td { padding: 6px 4px; border-bottom: 1px solid var(--linea); }
+  td.k { font-family: var(--jp); font-weight: 700; font-size: 17px; }
+  td.r { color: var(--suave); }
+  .botones { display: flex; gap: 10px; position: sticky; bottom: -24px; background: var(--panel);
+    padding: 12px 0 0; margin-bottom: -4px; }
+  .botones .principal { margin: 0; }
+  .botones .sec { flex: 0 0 auto; padding: 12px 18px; }
+</style>
+</head>
+<body>
+
+<section id="menu">
+  <div class="caja">
+    <h1><span class="jp">日本語</span> Memotest</h1>
+    <p class="sub"><span id="total"></span> palabras del JLPT N5</p>
+
+    <div class="grupo">
+      <span>Pares</span>
+      <div class="opciones" data-opcion="pares">
+        <button class="op" data-v="6">6</button>
+        <button class="op activo" data-v="8">8</button>
+        <button class="op" data-v="12">12</button>
+        <button class="op" data-v="15">15</button>
+        <button class="op" data-v="18">18</button>
+      </div>
+    </div>
+
+    <div class="grupo">
+      <span>Palabras</span>
+      <div class="opciones" data-opcion="tipo">
+        <button class="op activo" data-v="todos">Todas</button>
+        <button class="op" data-v="hiragana">Hiragana</button>
+        <button class="op" data-v="katakana">Katakana</button>
+      </div>
+    </div>
+
+    <div class="grupo">
+      <span>Modo</span>
+      <div class="opciones" data-opcion="modo">
+        <button class="op activo" data-v="clasico">Clásico</button>
+        <button class="op" data-v="aprender">Aprender</button>
+      </div>
+      <div class="ayuda" id="ayudaModo"></div>
+    </div>
+
+    <div class="grupo" id="grupoRomaji">
+      <span>Romaji en la carta japonesa</span>
+      <div class="opciones" data-opcion="romaji">
+        <button class="op activo" data-v="si">Mostrar</button>
+        <button class="op" data-v="no">Ocultar</button>
+      </div>
+    </div>
+
+    <div class="grupo">
+      <span>Pronunciación al encontrar un par</span>
+      <div class="opciones" data-opcion="voz">
+        <button class="op activo" data-v="si">Sí</button>
+        <button class="op" data-v="no">No</button>
+      </div>
+      <div class="ayuda" id="ayudaVoz"></div>
+    </div>
+
+    <button class="principal" id="jugar">Jugar</button>
+    <div class="pie">Cada partida elige palabras al azar de toda la base.</div>
+  </div>
+</section>
+
+<header id="barra" class="oculto">
+  <span class="dato">Pares <b id="vPares">0/0</b></span>
+  <span class="dato">Intentos <b id="vIntentos">0</b></span>
+  <span class="dato">Tiempo <b id="vTiempo">0:00</b></span>
+  <span class="espacio"></span>
+  <button class="sec" id="reiniciar">Nueva partida</button>
+  <button class="sec" id="volver">Menú</button>
+</header>
+
+<main id="zona" class="oculto"><div id="tablero"></div></main>
+
+<section id="final" class="oculto">
+  <div class="caja">
+    <h1>¡Completado! <span class="jp">おめでとう</span></h1>
+    <div class="resumen">
+      <div><b id="fIntentos"></b><small>intentos</small></div>
+      <div><b id="fTiempo"></b><small>tiempo</small></div>
+      <div><b id="fPrecision"></b><small>precisión</small></div>
+    </div>
+    <div class="record" id="fRecord"></div>
+    <div class="grupo"><span>Repaso de esta partida</span></div>
+    <table id="fLista"></table>
+    <div class="botones">
+      <button class="principal" id="otra">Otra partida</button>
+      <button class="sec" id="fMenu">Menú</button>
+    </div>
+  </div>
+</section>
+
+<script>
+/* ===== PALABRAS (se completan con scripts/generar_juego.py) ===== */
+const PALABRAS = [{"kana":"あう","tipo":"hiragana","romaji":"au","espanol":"encontrarse"},{"kana":"あお","tipo":"hiragana","romaji":"ao","espanol":"azul"},{"kana":"あか","tipo":"hiragana","romaji":"aka","espanol":"rojo"},{"kana":"あかい","tipo":"hiragana","romaji":"akai","espanol":"rojo (adj.)"},{"kana":"あかるい","tipo":"hiragana","romaji":"akarui","espanol":"brillante"},{"kana":"あき","tipo":"hiragana","romaji":"aki","espanol":"otoño"},{"kana":"あく","tipo":"hiragana","romaji":"aku","espanol":"abrirse"},{"kana":"あける","tipo":"hiragana","romaji":"akeru","espanol":"abrir"},{"kana":"あさ","tipo":"hiragana","romaji":"asa","espanol":"mañana"},{"kana":"あさごはん","tipo":"hiragana","romaji":"asagohan","espanol":"desayuno"},{"kana":"あした","tipo":"hiragana","romaji":"ashita","espanol":"mañana (día siguiente)"},{"kana":"あそこ","tipo":"hiragana","romaji":"asoko","espanol":"allí"},{"kana":"あそぶ","tipo":"hiragana","romaji":"asobu","espanol":"jugar"},{"kana":"あたたかい","tipo":"hiragana","romaji":"atatakai","espanol":"cálido"},{"kana":"あたま","tipo":"hiragana","romaji":"atama","espanol":"cabeza"},{"kana":"あたらしい","tipo":"hiragana","romaji":"atarashii","espanol":"nuevo"},{"kana":"あつい","tipo":"hiragana","romaji":"atsui","espanol":"caluroso"},{"kana":"あつい","tipo":"hiragana","romaji":"atsui","espanol":"caliente"},{"kana":"あつい","tipo":"hiragana","romaji":"atsui","espanol":"grueso"},{"kana":"あと","tipo":"hiragana","romaji":"ato","espanol":"después"},{"kana":"あなた","tipo":"hiragana","romaji":"anata","espanol":"tú"},{"kana":"あに","tipo":"hiragana","romaji":"ani","espanol":"hermano mayor"},{"kana":"あね","tipo":"hiragana","romaji":"ane","espanol":"hermana mayor"},{"kana":"あの","tipo":"hiragana","romaji":"ano","espanol":"aquel"},{"kana":"あびる","tipo":"hiragana","romaji":"abiru","espanol":"bañarse"},{"kana":"あぶない","tipo":"hiragana","romaji":"abunai","espanol":"peligroso"},{"kana":"あまい","tipo":"hiragana","romaji":"amai","espanol":"dulce"},{"kana":"あまり","tipo":"hiragana","romaji":"amari","espanol":"no mucho"},{"kana":"あめ","tipo":"hiragana","romaji":"ame","espanol":"lluvia"},{"kana":"あらう","tipo":"hiragana","romaji":"arau","espanol":"lavar"},{"kana":"ある","tipo":"hiragana","romaji":"aru","espanol":"haber (objetos)"},{"kana":"あるく","tipo":"hiragana","romaji":"aruku","espanol":"caminar"},{"kana":"あれ","tipo":"hiragana","romaji":"are","espanol":"aquello"},{"kana":"いい","tipo":"hiragana","romaji":"ii","espanol":"bueno"},{"kana":"いいえ","tipo":"hiragana","romaji":"iie","espanol":"no"},{"kana":"いう","tipo":"hiragana","romaji":"iu","espanol":"decir"},{"kana":"いえ","tipo":"hiragana","romaji":"ie","espanol":"casa"},{"kana":"いく","tipo":"hiragana","romaji":"iku","espanol":"ir"},{"kana":"いくつ","tipo":"hiragana","romaji":"ikutsu","espanol":"cuántos"},{"kana":"いくら","tipo":"hiragana","romaji":"ikura","espanol":"cuánto"},{"kana":"いけ","tipo":"hiragana","romaji":"ike","espanol":"estanque"},{"kana":"いしゃ","tipo":"hiragana","romaji":"isha","espanol":"médico"},{"kana":"いす","tipo":"hiragana","romaji":"isu","espanol":"silla"},{"kana":"いそがしい","tipo":"hiragana","romaji":"isogashii","espanol":"ocupado"},{"kana":"いたい","tipo":"hiragana","romaji":"itai","espanol":"doloroso"},{"kana":"いち","tipo":"hiragana","romaji":"ichi","espanol":"uno"},{"kana":"いちにち","tipo":"hiragana","romaji":"ichinichi","espanol":"un día"},{"kana":"いちばん","tipo":"hiragana","romaji":"ichiban","espanol":"el más"},{"kana":"いつ","tipo":"hiragana","romaji":"itsu","espanol":"cuándo"},{"kana":"いつか","tipo":"hiragana","romaji":"itsuka","espanol":"día cinco"},{"kana":"いっしょ","tipo":"hiragana","romaji":"issho","espanol":"juntos"},{"kana":"いつつ","tipo":"hiragana","romaji":"itsutsu","espanol":"cinco cosas"},{"kana":"いつも","tipo":"hiragana","romaji":"itsumo","espanol":"siempre"},{"kana":"いぬ","tipo":"hiragana","romaji":"inu","espanol":"perro"},{"kana":"いま","tipo":"hiragana","romaji":"ima","espanol":"ahora"},{"kana":"いみ","tipo":"hiragana","romaji":"imi","espanol":"significado"},{"kana":"いもうと","tipo":"hiragana","romaji":"imouto","espanol":"hermana menor"},{"kana":"いや","tipo":"hiragana","romaji":"iya","espanol":"desagradable"},{"kana":"いる","tipo":"hiragana","romaji":"iru","espanol":"haber (personas)"},{"kana":"いる","tipo":"hiragana","romaji":"iru","espanol":"necesitar"},{"kana":"いれる","tipo":"hiragana","romaji":"ireru","espanol":"poner dentro"},{"kana":"いろ","tipo":"hiragana","romaji":"iro","espanol":"color"},{"kana":"いろいろ","tipo":"hiragana","romaji":"iroiro","espanol":"varios"},{"kana":"うえ","tipo":"hiragana","romaji":"ue","espanol":"arriba"},{"kana":"うしろ","tipo":"hiragana","romaji":"ushiro","espanol":"detrás"},{"kana":"うすい","tipo":"hiragana","romaji":"usui","espanol":"delgado"},{"kana":"うた","tipo":"hiragana","romaji":"uta","espanol":"canción"},{"kana":"うたう","tipo":"hiragana","romaji":"utau","espanol":"cantar"},{"kana":"うまれる","tipo":"hiragana","romaji":"umareru","espanol":"nacer"},{"kana":"うみ","tipo":"hiragana","romaji":"umi","espanol":"mar"},{"kana":"うる","tipo":"hiragana","romaji":"uru","espanol":"vender"},{"kana":"うるさい","tipo":"hiragana","romaji":"urusai","espanol":"ruidoso"},{"kana":"うわぎ","tipo":"hiragana","romaji":"uwagi","espanol":"chaqueta"},{"kana":"え","tipo":"hiragana","romaji":"e","espanol":"imagen"},{"kana":"えいが","tipo":"hiragana","romaji":"eiga","espanol":"película"},{"kana":"えいご","tipo":"hiragana","romaji":"eigo","espanol":"inglés"},{"kana":"ええ","tipo":"hiragana","romaji":"ee","espanol":"sí"},{"kana":"えき","tipo":"hiragana","romaji":"eki","espanol":"estación"},{"kana":"えん","tipo":"hiragana","romaji":"en","espanol":"jen"},{"kana":"えんぴつ","tipo":"hiragana","romaji":"enpitsu","espanol":"lápiz"},{"kana":"おいしい","tipo":"hiragana","romaji":"oishii","espanol":"delicioso"},{"kana":"おおい","tipo":"hiragana","romaji":"ooi","espanol":"muchos"},{"kana":"おおきい","tipo":"hiragana","romaji":"ookii","espanol":"grande"},{"kana":"おおきな","tipo":"hiragana","romaji":"ookina","espanol":"gran"},{"kana":"おかあさん","tipo":"hiragana","romaji":"okaasan","espanol":"madre"},{"kana":"おかし","tipo":"hiragana","romaji":"okashi","espanol":"dulce"},{"kana":"おかね","tipo":"hiragana","romaji":"okane","espanol":"dinero"},{"kana":"おきる","tipo":"hiragana","romaji":"okiru","espanol":"despertarse"},{"kana":"おく","tipo":"hiragana","romaji":"oku","espanol":"poner"},{"kana":"おくさん","tipo":"hiragana","romaji":"okusan","espanol":"esposa"},{"kana":"おさけ","tipo":"hiragana","romaji":"osake","espanol":"alcohol"},{"kana":"おじいさん","tipo":"hiragana","romaji":"ojiisan","espanol":"abuelo"},{"kana":"おしえる","tipo":"hiragana","romaji":"oshieru","espanol":"enseñar"},{"kana":"おす","tipo":"hiragana","romaji":"osu","espanol":"empujar"},{"kana":"おそい","tipo":"hiragana","romaji":"osoi","espanol":"tarde"},{"kana":"おちゃ","tipo":"hiragana","romaji":"ocha","espanol":"té"},{"kana":"おとうさん","tipo":"hiragana","romaji":"otousan","espanol":"padre"},{"kana":"おとうと","tipo":"hiragana","romaji":"otouto","espanol":"hermano menor"},{"kana":"おとこ","tipo":"hiragana","romaji":"otoko","espanol":"hombre"},{"kana":"おとこのこ","tipo":"hiragana","romaji":"otokonoko","espanol":"niño"},{"kana":"おとな","tipo":"hiragana","romaji":"otona","espanol":"adulto"},{"kana":"おなか","tipo":"hiragana","romaji":"onaka","espanol":"estómago"},{"kana":"おなじ","tipo":"hiragana","romaji":"onaji","espanol":"igual"},{"kana":"おにいさん","tipo":"hiragana","romaji":"oniisan","espanol":"hermano mayor"},{"kana":"おねえさん","tipo":"hiragana","romaji":"oneesan","espanol":"hermana mayor"},{"kana":"おばあさん","tipo":"hiragana","romaji":"obaasan","espanol":"abuela"},{"kana":"おばさん","tipo":"hiragana","romaji":"obasan","espanol":"tía / señora"},{"kana":"おふろ","tipo":"hiragana","romaji":"ofuro","espanol":"baño"},{"kana":"おべんとう","tipo":"hiragana","romaji":"obentou","espanol":"almuerzo (vianda)"},{"kana":"おぼえる","tipo":"hiragana","romaji":"oboeru","espanol":"recordar / aprender"},{"kana":"おまわりさん","tipo":"hiragana","romaji":"omawarisan","espanol":"policía"},{"kana":"おもしろい","tipo":"hiragana","romaji":"omoshiroi","espanol":"interesante"},{"kana":"およぐ","tipo":"hiragana","romaji":"oyogu","espanol":"nadar"},{"kana":"おりる","tipo":"hiragana","romaji":"oriru","espanol":"bajar"},{"kana":"おわる","tipo":"hiragana","romaji":"owaru","espanol":"terminar"},{"kana":"おんがく","tipo":"hiragana","romaji":"ongaku","espanol":"música"},{"kana":"おんな","tipo":"hiragana","romaji":"onna","espanol":"mujer"},{"kana":"おんなのこ","tipo":"hiragana","romaji":"onnanoko","espanol":"niña"},{"kana":"かいしゃ","tipo":"hiragana","romaji":"kaisha","espanol":"empresa"},{"kana":"かいだん","tipo":"hiragana","romaji":"kaidan","espanol":"escalera"},{"kana":"かいもの","tipo":"hiragana","romaji":"kaimono","espanol":"compras"},{"kana":"かう","tipo":"hiragana","romaji":"kau","espanol":"comprar"},{"kana":"かえす","tipo":"hiragana","romaji":"kaesu","espanol":"devolver"},{"kana":"かえる","tipo":"hiragana","romaji":"kaeru","espanol":"regresar"},{"kana":"かお","tipo":"hiragana","romaji":"kao","espanol":"cara"},{"kana":"かかる","tipo":"hiragana","romaji":"kakaru","espanol":"tardar / costar"},{"kana":"かぎ","tipo":"hiragana","romaji":"kagi","espanol":"llave"},{"kana":"かく","tipo":"hiragana","romaji":"kaku","espanol":"escribir"},{"kana":"がくせい","tipo":"hiragana","romaji":"gakusei","espanol":"estudiante"},{"kana":"かける","tipo":"hiragana","romaji":"kakeru","espanol":"colgar / llamar por teléfono"},{"kana":"かさ","tipo":"hiragana","romaji":"kasa","espanol":"paraguas"},{"kana":"かす","tipo":"hiragana","romaji":"kasu","espanol":"prestar"},{"kana":"かぜ","tipo":"hiragana","romaji":"kaze","espanol":"viento"},{"kana":"かぜ","tipo":"hiragana","romaji":"kaze","espanol":"resfriado"},{"kana":"かぞく","tipo":"hiragana","romaji":"kazoku","espanol":"familia"},{"kana":"かた","tipo":"hiragana","romaji":"kata","espanol":"hombro"},{"kana":"かたかな","tipo":"hiragana","romaji":"katakana","espanol":"katakana"},{"kana":"がっこう","tipo":"hiragana","romaji":"gakkou","espanol":"escuela"},{"kana":"かど","tipo":"hiragana","romaji":"kado","espanol":"esquina"},{"kana":"かばん","tipo":"hiragana","romaji":"kaban","espanol":"bolso"},{"kana":"かびん","tipo":"hiragana","romaji":"kabin","espanol":"florero"},{"kana":"かぶる","tipo":"hiragana","romaji":"kaburu","espanol":"ponerse (sombrero)"},{"kana":"かみ","tipo":"hiragana","romaji":"kami","espanol":"papel"},{"kana":"かみ","tipo":"hiragana","romaji":"kami","espanol":"cabello"},{"kana":"かようび","tipo":"hiragana","romaji":"kayoubi","espanol":"martes"},{"kana":"からい","tipo":"hiragana","romaji":"karai","espanol":"picante"},{"kana":"からだ","tipo":"hiragana","romaji":"karada","espanol":"cuerpo"},{"kana":"かりる","tipo":"hiragana","romaji":"kariru","espanol":"pedir prestado"},{"kana":"かるい","tipo":"hiragana","romaji":"karui","espanol":"liviano"},{"kana":"カレー","tipo":"katakana","romaji":"karē","espanol":"curry"},{"kana":"かわ","tipo":"hiragana","romaji":"kawa","espanol":"río"},{"kana":"かわいい","tipo":"hiragana","romaji":"kawaii","espanol":"lindo"},{"kana":"かんじ","tipo":"hiragana","romaji":"kanji","espanol":"kanji"},{"kana":"き","tipo":"hiragana","romaji":"ki","espanol":"árbol"},{"kana":"きいろ","tipo":"hiragana","romaji":"kiiro","espanol":"amarillo"},{"kana":"きいろい","tipo":"hiragana","romaji":"kiiroi","espanol":"amarillo (adj.)"},{"kana":"きえる","tipo":"hiragana","romaji":"kieru","espanol":"apagarse"},{"kana":"きく","tipo":"hiragana","romaji":"kiku","espanol":"escuchar"},{"kana":"きた","tipo":"hiragana","romaji":"kita","espanol":"norte"},{"kana":"ギター","tipo":"katakana","romaji":"gitā","espanol":"guitarra"},{"kana":"きたない","tipo":"hiragana","romaji":"kitanai","espanol":"sucio"},{"kana":"きっさてん","tipo":"hiragana","romaji":"kissaten","espanol":"cafetería"},{"kana":"きっぷ","tipo":"hiragana","romaji":"kippu","espanol":"boleto"},{"kana":"きのう","tipo":"hiragana","romaji":"kinou","espanol":"ayer"},{"kana":"きゅう","tipo":"hiragana","romaji":"kyuu","espanol":"nueve"},{"kana":"ぎゅうにく","tipo":"hiragana","romaji":"gyuuniku","espanol":"carne vacuna"},{"kana":"ぎゅうにゅう","tipo":"hiragana","romaji":"gyuunyuu","espanol":"leche"},{"kana":"きょう","tipo":"hiragana","romaji":"kyou","espanol":"hoy"},{"kana":"きょうしつ","tipo":"hiragana","romaji":"kyoushitsu","espanol":"aula"},{"kana":"きょうだい","tipo":"hiragana","romaji":"kyoudai","espanol":"hermanos"},{"kana":"きょねん","tipo":"hiragana","romaji":"kyonen","espanol":"año pasado"},{"kana":"きらい","tipo":"hiragana","romaji":"kirai","espanol":"no gustar"},{"kana":"きる","tipo":"hiragana","romaji":"kiru","espanol":"cortar"},{"kana":"きる","tipo":"hiragana","romaji":"kiru","espanol":"vestirse"},{"kana":"きれい","tipo":"hiragana","romaji":"kirei","espanol":"bonito / limpio"},{"kana":"キロ","tipo":"katakana","romaji":"kiro","espanol":"kilómetro"},{"kana":"ぎんこう","tipo":"hiragana","romaji":"ginkou","espanol":"banco"},{"kana":"きんようび","tipo":"hiragana","romaji":"kin'youbi","espanol":"viernes"},{"kana":"く","tipo":"hiragana","romaji":"ku","espanol":"frase / distrito"},{"kana":"くすり","tipo":"hiragana","romaji":"kusuri","espanol":"medicina"},{"kana":"ください","tipo":"hiragana","romaji":"kudasai","espanol":"por favor"},{"kana":"くだもの","tipo":"hiragana","romaji":"kudamono","espanol":"fruta"},{"kana":"くち","tipo":"hiragana","romaji":"kuchi","espanol":"boca"},{"kana":"くつ","tipo":"hiragana","romaji":"kutsu","espanol":"zapatos"},{"kana":"くつした","tipo":"hiragana","romaji":"kutsushita","espanol":"medias"},{"kana":"くに","tipo":"hiragana","romaji":"kuni","espanol":"país"},{"kana":"くも","tipo":"hiragana","romaji":"kumo","espanol":"nube"},{"kana":"くもる","tipo":"hiragana","romaji":"kumoru","espanol":"nublarse"},{"kana":"くらい","tipo":"hiragana","romaji":"kurai","espanol":"oscuro"},{"kana":"クラス","tipo":"katakana","romaji":"kurasu","espanol":"clase"},{"kana":"グラム","tipo":"katakana","romaji":"guramu","espanol":"gramo"},{"kana":"くる","tipo":"hiragana","romaji":"kuru","espanol":"venir"},{"kana":"くるま","tipo":"hiragana","romaji":"kuruma","espanol":"auto"},{"kana":"くろ","tipo":"hiragana","romaji":"kuro","espanol":"negro"},{"kana":"くろい","tipo":"hiragana","romaji":"kuroi","espanol":"negro (adj.)"},{"kana":"けさ","tipo":"hiragana","romaji":"kesa","espanol":"esta mañana"},{"kana":"けす","tipo":"hiragana","romaji":"kesu","espanol":"borrar / apagar"},{"kana":"けっこう","tipo":"hiragana","romaji":"kekkou","espanol":"bastante / suficiente"},{"kana":"けっこん","tipo":"hiragana","romaji":"kekkon","espanol":"matrimonio"},{"kana":"げつようび","tipo":"hiragana","romaji":"getsuyoubi","espanol":"lunes"},{"kana":"げんかん","tipo":"hiragana","romaji":"genkan","espanol":"entrada"},{"kana":"げんき","tipo":"hiragana","romaji":"genki","espanol":"sano / con energía"},{"kana":"こうえん","tipo":"hiragana","romaji":"kouen","espanol":"parque"},{"kana":"こうちゃ","tipo":"hiragana","romaji":"koucha","espanol":"té negro"},{"kana":"こうばん","tipo":"hiragana","romaji":"kouban","espanol":"comisaría"},{"kana":"こえ","tipo":"hiragana","romaji":"koe","espanol":"voz"},{"kana":"コート","tipo":"katakana","romaji":"kōto","espanol":"abrigo"},{"kana":"コーヒー","tipo":"katakana","romaji":"kōhī","espanol":"café"},{"kana":"ここ","tipo":"hiragana","romaji":"koko","espanol":"aquí"},{"kana":"ごご","tipo":"hiragana","romaji":"gogo","espanol":"tarde (PM)"},{"kana":"ここのか","tipo":"hiragana","romaji":"kokonoka","espanol":"día nueve"},{"kana":"ここのつ","tipo":"hiragana","romaji":"kokonotsu","espanol":"nueve cosas"},{"kana":"ごぜん","tipo":"hiragana","romaji":"gozen","espanol":"mañana (AM)"},{"kana":"こたえる","tipo":"hiragana","romaji":"kotaeru","espanol":"responder"},{"kana":"こちら","tipo":"hiragana","romaji":"kochira","espanol":"este lado"},{"kana":"こっち","tipo":"hiragana","romaji":"kotchi","espanol":"aquí / este lado"},{"kana":"コップ","tipo":"katakana","romaji":"koppu","espanol":"vaso"},{"kana":"ことし","tipo":"hiragana","romaji":"kotoshi","espanol":"este año"},{"kana":"ことば","tipo":"hiragana","romaji":"kotoba","espanol":"palabra"},{"kana":"こども","tipo":"hiragana","romaji":"kodomo","espanol":"niño"},{"kana":"この","tipo":"hiragana","romaji":"kono","espanol":"este"},{"kana":"ごはん","tipo":"hiragana","romaji":"gohan","espanol":"arroz / comida"},{"kana":"コピー","tipo":"katakana","romaji":"kopī","espanol":"copia"},{"kana":"こまる","tipo":"hiragana","romaji":"komaru","espanol":"estar en problemas"},{"kana":"これ","tipo":"hiragana","romaji":"kore","espanol":"esto"},{"kana":"こんげつ","tipo":"hiragana","romaji":"kongetsu","espanol":"este mes"},{"kana":"こんしゅう","tipo":"hiragana","romaji":"konshuu","espanol":"esta semana"},{"kana":"こんにち","tipo":"hiragana","romaji":"konnichi","espanol":"estos días"},{"kana":"こんにちは","tipo":"hiragana","romaji":"konnichiwa","espanol":"hola"},{"kana":"こんばん","tipo":"hiragana","romaji":"konban","espanol":"esta noche"},{"kana":"こんばんは","tipo":"hiragana","romaji":"konbanwa","espanol":"buenas noches"},{"kana":"さいふ","tipo":"hiragana","romaji":"saifu","espanol":"billetera"},{"kana":"さかな","tipo":"hiragana","romaji":"sakana","espanol":"pez"},{"kana":"さき","tipo":"hiragana","romaji":"saki","espanol":"adelante"},{"kana":"さく","tipo":"hiragana","romaji":"saku","espanol":"florecer"},{"kana":"さくぶん","tipo":"hiragana","romaji":"sakubun","espanol":"redacción"},{"kana":"さす","tipo":"hiragana","romaji":"sasu","espanol":"sostener / abrir (paraguas)"},{"kana":"ざっし","tipo":"hiragana","romaji":"zasshi","espanol":"revista"},{"kana":"さとう","tipo":"hiragana","romaji":"satou","espanol":"azúcar"},{"kana":"さむい","tipo":"hiragana","romaji":"samui","espanol":"frío"},{"kana":"さらいねん","tipo":"hiragana","romaji":"sarainen","espanol":"dentro de dos años"},{"kana":"さん","tipo":"hiragana","romaji":"san","espanol":"tres"},{"kana":"さんぽ","tipo":"hiragana","romaji":"sanpo","espanol":"paseo"},{"kana":"し","tipo":"hiragana","romaji":"shi","espanol":"cuatro"},{"kana":"じ","tipo":"hiragana","romaji":"ji","espanol":"hora"},{"kana":"しお","tipo":"hiragana","romaji":"shio","espanol":"sal"},{"kana":"しかし","tipo":"hiragana","romaji":"shikashi","espanol":"pero"},{"kana":"じかん","tipo":"hiragana","romaji":"jikan","espanol":"tiempo"},{"kana":"しごと","tipo":"hiragana","romaji":"shigoto","espanol":"trabajo"},{"kana":"じしょ","tipo":"hiragana","romaji":"jisho","espanol":"diccionario"},{"kana":"しずか","tipo":"hiragana","romaji":"shizuka","espanol":"tranquilo"},{"kana":"した","tipo":"hiragana","romaji":"shita","espanol":"abajo"},{"kana":"しち","tipo":"hiragana","romaji":"shichi","espanol":"siete"},{"kana":"しつもん","tipo":"hiragana","romaji":"shitsumon","espanol":"pregunta"},{"kana":"じてんしゃ","tipo":"hiragana","romaji":"jitensha","espanol":"bicicleta"},{"kana":"じどうしゃ","tipo":"hiragana","romaji":"jidousha","espanol":"automóvil"},{"kana":"しぬ","tipo":"hiragana","romaji":"shinu","espanol":"morir"},{"kana":"じびき","tipo":"hiragana","romaji":"jibiki","espanol":"diccionario ilustrado"},{"kana":"じぶん","tipo":"hiragana","romaji":"jibun","espanol":"uno mismo"},{"kana":"しまる","tipo":"hiragana","romaji":"shimaru","espanol":"cerrarse"},{"kana":"しめる","tipo":"hiragana","romaji":"shimeru","espanol":"cerrar"},{"kana":"しめる","tipo":"hiragana","romaji":"shimeru","espanol":"abrochar"},{"kana":"じゃ","tipo":"hiragana","romaji":"ja","espanol":"entonces"},{"kana":"しゃしん","tipo":"hiragana","romaji":"shashin","espanol":"fotografía"},{"kana":"シャツ","tipo":"katakana","romaji":"shatsu","espanol":"camisa"},{"kana":"シャワー","tipo":"katakana","romaji":"shawā","espanol":"ducha"},{"kana":"じゅう","tipo":"hiragana","romaji":"juu","espanol":"diez"},{"kana":"ジュース","tipo":"katakana","romaji":"jūsu","espanol":"jugo"},{"kana":"じゅぎょう","tipo":"hiragana","romaji":"jugyou","espanol":"clase"},{"kana":"しゅくだい","tipo":"hiragana","romaji":"shukudai","espanol":"tarea"},{"kana":"じょうず","tipo":"hiragana","romaji":"jouzu","espanol":"hábil"},{"kana":"しょうゆ","tipo":"hiragana","romaji":"shouyu","espanol":"salsa de soja"},{"kana":"しょくどう","tipo":"hiragana","romaji":"shokudou","espanol":"comedor"},{"kana":"しる","tipo":"hiragana","romaji":"shiru","espanol":"saber"},{"kana":"しろ","tipo":"hiragana","romaji":"shiro","espanol":"blanco"},{"kana":"しろい","tipo":"hiragana","romaji":"shiroi","espanol":"blanco (adj.)"},{"kana":"しんぶん","tipo":"hiragana","romaji":"shinbun","espanol":"diario"},{"kana":"すいようび","tipo":"hiragana","romaji":"suiyoubi","espanol":"miércoles"},{"kana":"すう","tipo":"hiragana","romaji":"suu","espanol":"aspirar / fumar"},{"kana":"スカート","tipo":"katakana","romaji":"sukāto","espanol":"falda"},{"kana":"すき","tipo":"hiragana","romaji":"suki","espanol":"gustar"},{"kana":"すくない","tipo":"hiragana","romaji":"sukunai","espanol":"poco"},{"kana":"すぐ","tipo":"hiragana","romaji":"sugu","espanol":"inmediatamente"},{"kana":"すこし","tipo":"hiragana","romaji":"sukoshi","espanol":"un poco"},{"kana":"すずしい","tipo":"hiragana","romaji":"suzushii","espanol":"fresco"},{"kana":"ストーブ","tipo":"katakana","romaji":"sutōbu","espanol":"estufa"},{"kana":"スプーン","tipo":"katakana","romaji":"supūn","espanol":"cuchara"},{"kana":"スポーツ","tipo":"katakana","romaji":"supōtsu","espanol":"deporte"},{"kana":"ズボン","tipo":"katakana","romaji":"zubon","espanol":"pantalón"},{"kana":"すむ","tipo":"hiragana","romaji":"sumu","espanol":"vivir"},{"kana":"スリッパ","tipo":"katakana","romaji":"surippa","espanol":"pantuflas"},{"kana":"する","tipo":"hiragana","romaji":"suru","espanol":"hacer"},{"kana":"すわる","tipo":"hiragana","romaji":"suwaru","espanol":"sentarse"},{"kana":"せいと","tipo":"hiragana","romaji":"seito","espanol":"alumno"},{"kana":"セーター","tipo":"katakana","romaji":"sētā","espanol":"suéter"},{"kana":"せっけん","tipo":"hiragana","romaji":"sekken","espanol":"jabón"},{"kana":"せびろ","tipo":"hiragana","romaji":"sebiro","espanol":"traje"},{"kana":"せまい","tipo":"hiragana","romaji":"semai","espanol":"angosto"},{"kana":"ゼロ","tipo":"katakana","romaji":"zero","espanol":"cero"},{"kana":"せん","tipo":"hiragana","romaji":"sen","espanol":"mil"},{"kana":"せんげつ","tipo":"hiragana","romaji":"sengetsu","espanol":"mes pasado"},{"kana":"せんしゅう","tipo":"hiragana","romaji":"senshuu","espanol":"semana pasada"},{"kana":"せんせい","tipo":"hiragana","romaji":"sensei","espanol":"profesor"},{"kana":"ぜんぶ","tipo":"hiragana","romaji":"zenbu","espanol":"todo"},{"kana":"そう","tipo":"hiragana","romaji":"sou","espanol":"así"},{"kana":"そうじ","tipo":"hiragana","romaji":"souji","espanol":"limpieza"},{"kana":"そうして","tipo":"hiragana","romaji":"soushite","espanol":"y entonces"},{"kana":"そこ","tipo":"hiragana","romaji":"soko","espanol":"ahí"},{"kana":"そちら","tipo":"hiragana","romaji":"sochira","espanol":"ese lado"},{"kana":"そっち","tipo":"hiragana","romaji":"sotchi","espanol":"ahí"},{"kana":"そと","tipo":"hiragana","romaji":"soto","espanol":"afuera"},{"kana":"その","tipo":"hiragana","romaji":"sono","espanol":"ese"},{"kana":"そば","tipo":"hiragana","romaji":"soba","espanol":"cerca"},{"kana":"そら","tipo":"hiragana","romaji":"sora","espanol":"cielo"},{"kana":"それ","tipo":"hiragana","romaji":"sore","espanol":"eso"},{"kana":"それから","tipo":"hiragana","romaji":"sorekara","espanol":"después"},{"kana":"それでは","tipo":"hiragana","romaji":"soredeha","espanol":"entonces"},{"kana":"だいがく","tipo":"hiragana","romaji":"daigaku","espanol":"universidad"},{"kana":"たいしかん","tipo":"hiragana","romaji":"taishikan","espanol":"embajada"},{"kana":"だいじょうぶ","tipo":"hiragana","romaji":"daijoubu","espanol":"está bien"},{"kana":"だいすき","tipo":"hiragana","romaji":"daisuki","espanol":"gustar mucho"},{"kana":"たいせつ","tipo":"hiragana","romaji":"taisetsu","espanol":"importante"},{"kana":"だいたい","tipo":"hiragana","romaji":"daitai","espanol":"aproximadamente"},{"kana":"たいてい","tipo":"hiragana","romaji":"taitei","espanol":"generalmente"},{"kana":"だいどころ","tipo":"hiragana","romaji":"daidokoro","espanol":"cocina"},{"kana":"たいへん","tipo":"hiragana","romaji":"taihen","espanol":"muy / difícil"},{"kana":"たかい","tipo":"hiragana","romaji":"takai","espanol":"alto / caro"},{"kana":"たくさん","tipo":"hiragana","romaji":"takusan","espanol":"muchos"},{"kana":"タクシー","tipo":"katakana","romaji":"takushī","espanol":"taxi"},{"kana":"だす","tipo":"hiragana","romaji":"dasu","espanol":"sacar"},{"kana":"たつ","tipo":"hiragana","romaji":"tatsu","espanol":"levantarse"},{"kana":"たて","tipo":"hiragana","romaji":"tate","espanol":"vertical"},{"kana":"たてもの","tipo":"hiragana","romaji":"tatemono","espanol":"edificio"},{"kana":"たのしい","tipo":"hiragana","romaji":"tanoshii","espanol":"divertido"},{"kana":"たのむ","tipo":"hiragana","romaji":"tanomu","espanol":"pedir"},{"kana":"たばこ","tipo":"hiragana","romaji":"tabako","espanol":"cigarrillo"},{"kana":"たぶん","tipo":"hiragana","romaji":"tabun","espanol":"quizás"},{"kana":"たべもの","tipo":"hiragana","romaji":"tabemono","espanol":"comida"},{"kana":"たべる","tipo":"hiragana","romaji":"taberu","espanol":"comer"},{"kana":"たまご","tipo":"hiragana","romaji":"tamago","espanol":"huevo"},{"kana":"だれ","tipo":"hiragana","romaji":"dare","espanol":"quién"},{"kana":"だれか","tipo":"hiragana","romaji":"dareka","espanol":"alguien"},{"kana":"たんじょうび","tipo":"hiragana","romaji":"tanjoubi","espanol":"cumpleaños"},{"kana":"だんだん","tipo":"hiragana","romaji":"dandan","espanol":"poco a poco"},{"kana":"ちいさい","tipo":"hiragana","romaji":"chiisai","espanol":"pequeño"},{"kana":"ちかい","tipo":"hiragana","romaji":"chikai","espanol":"cerca"},{"kana":"ちがう","tipo":"hiragana","romaji":"chigau","espanol":"ser diferente"},{"kana":"ちかく","tipo":"hiragana","romaji":"chikaku","espanol":"cerca"},{"kana":"ちかてつ","tipo":"hiragana","romaji":"chikatetsu","espanol":"subte"},{"kana":"ちず","tipo":"hiragana","romaji":"chizu","espanol":"mapa"},{"kana":"ちち","tipo":"hiragana","romaji":"chichi","espanol":"padre"},{"kana":"ちゃいろ","tipo":"hiragana","romaji":"chairo","espanol":"marrón"},{"kana":"ちゃわん","tipo":"hiragana","romaji":"chawan","espanol":"tazón"},{"kana":"ちょうど","tipo":"hiragana","romaji":"choudo","espanol":"justo"},{"kana":"ちょっと","tipo":"hiragana","romaji":"chotto","espanol":"un poco"},{"kana":"ついたち","tipo":"hiragana","romaji":"tsuitachi","espanol":"día primero"},{"kana":"つかう","tipo":"hiragana","romaji":"tsukau","espanol":"usar"},{"kana":"つかれる","tipo":"hiragana","romaji":"tsukareru","espanol":"cansarse"},{"kana":"つぎ","tipo":"hiragana","romaji":"tsugi","espanol":"siguiente"},{"kana":"つく","tipo":"hiragana","romaji":"tsuku","espanol":"llegar"},{"kana":"つくえ","tipo":"hiragana","romaji":"tsukue","espanol":"escritorio"},{"kana":"つくる","tipo":"hiragana","romaji":"tsukuru","espanol":"hacer / fabricar"},{"kana":"つける","tipo":"hiragana","romaji":"tsukeru","espanol":"encender"},{"kana":"つとめる","tipo":"hiragana","romaji":"tsutomeru","espanol":"trabajar"},{"kana":"つまらない","tipo":"hiragana","romaji":"tsumaranai","espanol":"aburrido"},{"kana":"つめたい","tipo":"hiragana","romaji":"tsumetai","espanol":"frío (al tacto)"},{"kana":"つよい","tipo":"hiragana","romaji":"tsuyoi","espanol":"fuerte"},{"kana":"て","tipo":"hiragana","romaji":"te","espanol":"mano"},{"kana":"テープ","tipo":"katakana","romaji":"tēpu","espanol":"cinta"},{"kana":"テーブル","tipo":"katakana","romaji":"tēburu","espanol":"mesa"},{"kana":"でかける","tipo":"hiragana","romaji":"dekakeru","espanol":"salir"},{"kana":"てがみ","tipo":"hiragana","romaji":"tegami","espanol":"carta"},{"kana":"できる","tipo":"hiragana","romaji":"dekiru","espanol":"poder"},{"kana":"でぐち","tipo":"hiragana","romaji":"deguchi","espanol":"salida"},{"kana":"テスト","tipo":"katakana","romaji":"tesuto","espanol":"examen"},{"kana":"では","tipo":"hiragana","romaji":"deha","espanol":"entonces"},{"kana":"デパート","tipo":"katakana","romaji":"depāto","espanol":"tienda por departamentos"},{"kana":"でも","tipo":"hiragana","romaji":"demo","espanol":"pero"},{"kana":"でる","tipo":"hiragana","romaji":"deru","espanol":"salir"},{"kana":"テレビ","tipo":"katakana","romaji":"terebi","espanol":"televisión"},{"kana":"てんき","tipo":"hiragana","romaji":"tenki","espanol":"clima"},{"kana":"でんき","tipo":"hiragana","romaji":"denki","espanol":"electricidad"},{"kana":"でんしゃ","tipo":"hiragana","romaji":"densha","espanol":"tren"},{"kana":"でんわ","tipo":"hiragana","romaji":"denwa","espanol":"teléfono"},{"kana":"と","tipo":"hiragana","romaji":"to","espanol":"y / con"},{"kana":"ドア","tipo":"katakana","romaji":"doa","espanol":"puerta"},{"kana":"トイレ","tipo":"katakana","romaji":"toire","espanol":"baño"},{"kana":"どう","tipo":"hiragana","romaji":"dou","espanol":"cómo"},{"kana":"どうして","tipo":"hiragana","romaji":"doushite","espanol":"por qué"},{"kana":"どうぞ","tipo":"hiragana","romaji":"douzo","espanol":"por favor"},{"kana":"どうぶつ","tipo":"hiragana","romaji":"doubutsu","espanol":"animal"},{"kana":"どうも","tipo":"hiragana","romaji":"doumo","espanol":"muchas gracias"},{"kana":"とお","tipo":"hiragana","romaji":"too","espanol":"diez"},{"kana":"とおい","tipo":"hiragana","romaji":"tooi","espanol":"lejos"},{"kana":"とき","tipo":"hiragana","romaji":"toki","espanol":"tiempo"},{"kana":"とけい","tipo":"hiragana","romaji":"tokei","espanol":"reloj"},{"kana":"どこ","tipo":"hiragana","romaji":"doko","espanol":"dónde"},{"kana":"ところ","tipo":"hiragana","romaji":"tokoro","espanol":"lugar"},{"kana":"としょかん","tipo":"hiragana","romaji":"toshokan","espanol":"biblioteca"},{"kana":"どちら","tipo":"hiragana","romaji":"dochira","espanol":"cuál / dónde"},{"kana":"どっち","tipo":"hiragana","romaji":"dotchi","espanol":"cuál de los dos"},{"kana":"とても","tipo":"hiragana","romaji":"totemo","espanol":"muy"},{"kana":"どなた","tipo":"hiragana","romaji":"donata","espanol":"quién (formal)"},{"kana":"となり","tipo":"hiragana","romaji":"tonari","espanol":"al lado"},{"kana":"どの","tipo":"hiragana","romaji":"dono","espanol":"cuál"},{"kana":"とぶ","tipo":"hiragana","romaji":"tobu","espanol":"volar"},{"kana":"とまる","tipo":"hiragana","romaji":"tomaru","espanol":"detenerse"},{"kana":"ともだち","tipo":"hiragana","romaji":"tomodachi","espanol":"amigo"},{"kana":"どようび","tipo":"hiragana","romaji":"doyoubi","espanol":"sábado"},{"kana":"とり","tipo":"hiragana","romaji":"tori","espanol":"pájaro"},{"kana":"とりにく","tipo":"hiragana","romaji":"toriniku","espanol":"pollo"},{"kana":"とる","tipo":"hiragana","romaji":"toru","espanol":"tomar"},{"kana":"とる","tipo":"hiragana","romaji":"toru","espanol":"sacar (foto)"},{"kana":"どれ","tipo":"hiragana","romaji":"dore","espanol":"cuál"},{"kana":"ナイフ","tipo":"katakana","romaji":"naifu","espanol":"cuchillo"},{"kana":"なか","tipo":"hiragana","romaji":"naka","espanol":"dentro"},{"kana":"ながい","tipo":"hiragana","romaji":"nagai","espanol":"largo"},{"kana":"なく","tipo":"hiragana","romaji":"naku","espanol":"llorar"},{"kana":"なくなる","tipo":"hiragana","romaji":"nakunaru","espanol":"desaparecer"},{"kana":"なぜ","tipo":"hiragana","romaji":"naze","espanol":"por qué"},{"kana":"なつ","tipo":"hiragana","romaji":"natsu","espanol":"verano"},{"kana":"なつやすみ","tipo":"hiragana","romaji":"natsuyasumi","espanol":"vacaciones de verano"},{"kana":"なな","tipo":"hiragana","romaji":"nana","espanol":"siete"},{"kana":"なに","tipo":"hiragana","romaji":"nani","espanol":"qué"},{"kana":"なのか","tipo":"hiragana","romaji":"nanoka","espanol":"día siete"},{"kana":"なまえ","tipo":"hiragana","romaji":"namae","espanol":"nombre"},{"kana":"ならう","tipo":"hiragana","romaji":"narau","espanol":"aprender"},{"kana":"ならぶ","tipo":"hiragana","romaji":"narabu","espanol":"alinearse"},{"kana":"ならべる","tipo":"hiragana","romaji":"naraberu","espanol":"alinear"},{"kana":"なる","tipo":"hiragana","romaji":"naru","espanol":"llegar a ser"},{"kana":"なん","tipo":"hiragana","romaji":"nan","espanol":"qué"},{"kana":"に","tipo":"hiragana","romaji":"ni","espanol":"partícula \"en/a\""},{"kana":"にぎやか","tipo":"hiragana","romaji":"nigiyaka","espanol":"animado"},{"kana":"にく","tipo":"hiragana","romaji":"niku","espanol":"carne"},{"kana":"にし","tipo":"hiragana","romaji":"nishi","espanol":"oeste"},{"kana":"にちようび","tipo":"hiragana","romaji":"nichiyoubi","espanol":"domingo"},{"kana":"にもつ","tipo":"hiragana","romaji":"nimotsu","espanol":"equipaje"},{"kana":"ニュース","tipo":"katakana","romaji":"nyūsu","espanol":"noticias"},{"kana":"にわ","tipo":"hiragana","romaji":"niwa","espanol":"jardín"},{"kana":"ぬぐ","tipo":"hiragana","romaji":"nugu","espanol":"quitarse la ropa"},{"kana":"ぬる","tipo":"hiragana","romaji":"nuru","espanol":"pintar"},{"kana":"ネクタイ","tipo":"katakana","romaji":"nekutai","espanol":"corbata"},{"kana":"ねこ","tipo":"hiragana","romaji":"neko","espanol":"gato"},{"kana":"ねる","tipo":"hiragana","romaji":"neru","espanol":"dormir"},{"kana":"ノート","tipo":"katakana","romaji":"nōto","espanol":"cuaderno"},{"kana":"のぼる","tipo":"hiragana","romaji":"noboru","espanol":"subir"},{"kana":"のみもの","tipo":"hiragana","romaji":"nomimono","espanol":"bebida"},{"kana":"のむ","tipo":"hiragana","romaji":"nomu","espanol":"beber"},{"kana":"のる","tipo":"hiragana","romaji":"noru","espanol":"subir (a un vehículo)"},{"kana":"はい","tipo":"hiragana","romaji":"hai","espanol":"sí"},{"kana":"はいる","tipo":"hiragana","romaji":"hairu","espanol":"entrar"},{"kana":"はがき","tipo":"hiragana","romaji":"hagaki","espanol":"postal"},{"kana":"はく","tipo":"hiragana","romaji":"haku","espanol":"ponerse (zapatos)"},{"kana":"はこ","tipo":"hiragana","romaji":"hako","espanol":"caja"},{"kana":"はし","tipo":"hiragana","romaji":"hashi","espanol":"palillos"},{"kana":"はし","tipo":"hiragana","romaji":"hashi","espanol":"puente"},{"kana":"はじまる","tipo":"hiragana","romaji":"hajimaru","espanol":"comenzar"},{"kana":"はじめる","tipo":"hiragana","romaji":"hajimeru","espanol":"empezar"},{"kana":"はじめまして","tipo":"hiragana","romaji":"hajimemashite","espanol":"mucho gusto"},{"kana":"はしる","tipo":"hiragana","romaji":"hashiru","espanol":"correr"},{"kana":"バス","tipo":"katakana","romaji":"basu","espanol":"autobús"},{"kana":"バター","tipo":"katakana","romaji":"batā","espanol":"manteca"},{"kana":"はたち","tipo":"hiragana","romaji":"hatachi","espanol":"20 años"},{"kana":"はたらく","tipo":"hiragana","romaji":"hataraku","espanol":"trabajar"},{"kana":"はち","tipo":"hiragana","romaji":"hachi","espanol":"ocho"},{"kana":"はつか","tipo":"hiragana","romaji":"hatsuka","espanol":"día veinte"},{"kana":"はな","tipo":"hiragana","romaji":"hana","espanol":"nariz"},{"kana":"はなし","tipo":"hiragana","romaji":"hanashi","espanol":"historia"},{"kana":"はなす","tipo":"hiragana","romaji":"hanasu","espanol":"hablar"},{"kana":"はは","tipo":"hiragana","romaji":"haha","espanol":"madre"},{"kana":"はやい","tipo":"hiragana","romaji":"hayai","espanol":"rápido"},{"kana":"はやい","tipo":"hiragana","romaji":"hayai","espanol":"temprano"},{"kana":"はる","tipo":"hiragana","romaji":"haru","espanol":"primavera"},{"kana":"はる","tipo":"hiragana","romaji":"haru","espanol":"pegar"},{"kana":"ばん","tipo":"hiragana","romaji":"ban","espanol":"noche"},{"kana":"パン","tipo":"katakana","romaji":"pan","espanol":"pan"},{"kana":"ハンカチ","tipo":"katakana","romaji":"hankachi","espanol":"pañuelo"},{"kana":"ばんごう","tipo":"hiragana","romaji":"bangou","espanol":"número"},{"kana":"ばんごはん","tipo":"hiragana","romaji":"bangohan","espanol":"cena"},{"kana":"はんぶん","tipo":"hiragana","romaji":"hanbun","espanol":"mitad"},{"kana":"ひ","tipo":"hiragana","romaji":"hi","espanol":"sol"},{"kana":"ひがし","tipo":"hiragana","romaji":"higashi","espanol":"este"},{"kana":"ひく","tipo":"hiragana","romaji":"hiku","espanol":"tocar (instrumento)"},{"kana":"ひく","tipo":"hiragana","romaji":"hiku","espanol":"sacar (restar)"},{"kana":"ひくい","tipo":"hiragana","romaji":"hikui","espanol":"bajo"},{"kana":"ひこうき","tipo":"hiragana","romaji":"hikouki","espanol":"avión"},{"kana":"ひだり","tipo":"hiragana","romaji":"hidari","espanol":"izquierda"},{"kana":"ひと","tipo":"hiragana","romaji":"hito","espanol":"persona"},{"kana":"ひとつ","tipo":"hiragana","romaji":"hitotsu","espanol":"uno (objeto)"},{"kana":"ひとり","tipo":"hiragana","romaji":"hitori","espanol":"una persona"},{"kana":"ひま","tipo":"hiragana","romaji":"hima","espanol":"tiempo libre"},{"kana":"ひゃく","tipo":"hiragana","romaji":"hyaku","espanol":"cien"},{"kana":"びょういん","tipo":"hiragana","romaji":"byouin","espanol":"hospital"},{"kana":"びょうき","tipo":"hiragana","romaji":"byouki","espanol":"enfermedad"},{"kana":"ひらがな","tipo":"hiragana","romaji":"hiragana","espanol":"hiragana"},{"kana":"ひる","tipo":"hiragana","romaji":"hiru","espanol":"mediodía"},{"kana":"ひるごはん","tipo":"hiragana","romaji":"hirugohan","espanol":"almuerzo"},{"kana":"ひろい","tipo":"hiragana","romaji":"hiroi","espanol":"amplio"},{"kana":"フィルム","tipo":"katakana","romaji":"firumu","espanol":"película fotográfica"},{"kana":"ふうとう","tipo":"hiragana","romaji":"fuutou","espanol":"sobre"},{"kana":"フォーク","tipo":"katakana","romaji":"fōku","espanol":"tenedor"},{"kana":"ふく","tipo":"hiragana","romaji":"fuku","espanol":"ropa"},{"kana":"ふく","tipo":"hiragana","romaji":"fuku","espanol":"sonar (silbato)"},{"kana":"ふたつ","tipo":"hiragana","romaji":"futatsu","espanol":"dos (objetos)"},{"kana":"ぶた","tipo":"hiragana","romaji":"buta","espanol":"cerdo"},{"kana":"ふゆ","tipo":"hiragana","romaji":"fuyu","espanol":"invierno"},{"kana":"ふる","tipo":"hiragana","romaji":"furu","espanol":"caer (lluvia/nieve)"},{"kana":"ふるい","tipo":"hiragana","romaji":"furui","espanol":"viejo"},{"kana":"ふろ","tipo":"hiragana","romaji":"furo","espanol":"baño"},{"kana":"ぶんしょう","tipo":"hiragana","romaji":"bunshou","espanol":"texto"},{"kana":"ページ","tipo":"katakana","romaji":"pēji","espanol":"página"},{"kana":"へた","tipo":"hiragana","romaji":"heta","espanol":"poco hábil"},{"kana":"ベッド","tipo":"katakana","romaji":"beddo","espanol":"cama"},{"kana":"ペット","tipo":"katakana","romaji":"petto","espanol":"mascota"},{"kana":"へや","tipo":"hiragana","romaji":"heya","espanol":"habitación"},{"kana":"へん","tipo":"hiragana","romaji":"hen","espanol":"lado / zona"},{"kana":"べんきょう","tipo":"hiragana","romaji":"benkyou","espanol":"estudio"},{"kana":"べんり","tipo":"hiragana","romaji":"benri","espanol":"cómodo"},{"kana":"ぼうし","tipo":"hiragana","romaji":"boushi","espanol":"sombrero"},{"kana":"ボールペン","tipo":"katakana","romaji":"bōrupen","espanol":"bolígrafo"},{"kana":"ほか","tipo":"hiragana","romaji":"hoka","espanol":"otro"},{"kana":"ポケット","tipo":"katakana","romaji":"poketto","espanol":"bolsillo"},{"kana":"ほしい","tipo":"hiragana","romaji":"hoshii","espanol":"querer"},{"kana":"ポスト","tipo":"katakana","romaji":"posuto","espanol":"buzón"},{"kana":"ほそい","tipo":"hiragana","romaji":"hosoi","espanol":"delgado"},{"kana":"ボタン","tipo":"katakana","romaji":"botan","espanol":"botón"},{"kana":"ホテル","tipo":"katakana","romaji":"hoteru","espanol":"hotel"},{"kana":"ほん","tipo":"hiragana","romaji":"hon","espanol":"libro"},{"kana":"ほんだな","tipo":"hiragana","romaji":"hondana","espanol":"biblioteca (mueble)"},{"kana":"ほんとう","tipo":"hiragana","romaji":"hontou","espanol":"verdad"},{"kana":"まいあさ","tipo":"hiragana","romaji":"maiasa","espanol":"cada mañana"},{"kana":"まいげつ","tipo":"hiragana","romaji":"maigetsu","espanol":"cada mes"},{"kana":"まいしゅう","tipo":"hiragana","romaji":"maishuu","espanol":"cada semana"},{"kana":"まいにち","tipo":"hiragana","romaji":"mainichi","espanol":"todos los días"},{"kana":"まいねん","tipo":"hiragana","romaji":"mainen","espanol":"cada año"},{"kana":"まいばん","tipo":"hiragana","romaji":"maiban","espanol":"cada noche"},{"kana":"まえ","tipo":"hiragana","romaji":"mae","espanol":"delante"},{"kana":"まがる","tipo":"hiragana","romaji":"magaru","espanol":"doblar"},{"kana":"まず","tipo":"hiragana","romaji":"mazu","espanol":"primero"},{"kana":"また","tipo":"hiragana","romaji":"mata","espanol":"otra vez"},{"kana":"まだ","tipo":"hiragana","romaji":"mada","espanol":"todavía"},{"kana":"まち","tipo":"hiragana","romaji":"machi","espanol":"ciudad"},{"kana":"まつ","tipo":"hiragana","romaji":"matsu","espanol":"esperar"},{"kana":"まっすぐ","tipo":"hiragana","romaji":"massugu","espanol":"derecho"},{"kana":"マッチ","tipo":"katakana","romaji":"matchi","espanol":"fósforo"},{"kana":"まど","tipo":"hiragana","romaji":"mado","espanol":"ventana"},{"kana":"まるい","tipo":"hiragana","romaji":"marui","espanol":"redondo"},{"kana":"まん","tipo":"hiragana","romaji":"man","espanol":"diez mil"},{"kana":"みぎ","tipo":"hiragana","romaji":"migi","espanol":"derecha"},{"kana":"みじかい","tipo":"hiragana","romaji":"mijikai","espanol":"corto"},{"kana":"みず","tipo":"hiragana","romaji":"mizu","espanol":"agua"},{"kana":"みせ","tipo":"hiragana","romaji":"mise","espanol":"tienda"},{"kana":"みせる","tipo":"hiragana","romaji":"miseru","espanol":"mostrar"},{"kana":"みち","tipo":"hiragana","romaji":"michi","espanol":"camino"},{"kana":"みっか","tipo":"hiragana","romaji":"mikka","espanol":"día tres"},{"kana":"みっつ","tipo":"hiragana","romaji":"mittsu","espanol":"tres (objetos)"},{"kana":"みどり","tipo":"hiragana","romaji":"midori","espanol":"verde"},{"kana":"みなさん","tipo":"hiragana","romaji":"minasan","espanol":"todos ustedes"},{"kana":"みなみ","tipo":"hiragana","romaji":"minami","espanol":"sur"},{"kana":"みみ","tipo":"hiragana","romaji":"mimi","espanol":"oreja"},{"kana":"みる","tipo":"hiragana","romaji":"miru","espanol":"ver"},{"kana":"みんな","tipo":"hiragana","romaji":"minna","espanol":"todos"},{"kana":"むいか","tipo":"hiragana","romaji":"muika","espanol":"día seis"},{"kana":"むこう","tipo":"hiragana","romaji":"mukou","espanol":"frente / otro lado"},{"kana":"むずかしい","tipo":"hiragana","romaji":"muzukashii","espanol":"difícil"},{"kana":"むっつ","tipo":"hiragana","romaji":"muttsu","espanol":"seis (objetos)"},{"kana":"むら","tipo":"hiragana","romaji":"mura","espanol":"pueblo"},{"kana":"め","tipo":"hiragana","romaji":"me","espanol":"ojo"},{"kana":"メートル","tipo":"katakana","romaji":"mētoru","espanol":"metro"},{"kana":"めがね","tipo":"hiragana","romaji":"megane","espanol":"anteojos"},{"kana":"もう","tipo":"hiragana","romaji":"mou","espanol":"ya"},{"kana":"もういちど","tipo":"hiragana","romaji":"mouichido","espanol":"otra vez"},{"kana":"もくようび","tipo":"hiragana","romaji":"mokuyoubi","espanol":"jueves"},{"kana":"もしもし","tipo":"hiragana","romaji":"moshimoshi","espanol":"hola (teléfono)"},{"kana":"もちろん","tipo":"hiragana","romaji":"mochiron","espanol":"por supuesto"},{"kana":"もつ","tipo":"hiragana","romaji":"motsu","espanol":"tener / llevar"},{"kana":"もっと","tipo":"hiragana","romaji":"motto","espanol":"más"},{"kana":"もの","tipo":"hiragana","romaji":"mono","espanol":"cosa"},{"kana":"もん","tipo":"hiragana","romaji":"mon","espanol":"puerta"},{"kana":"もんだい","tipo":"hiragana","romaji":"mondai","espanol":"problema"},{"kana":"やおや","tipo":"hiragana","romaji":"yaoya","espanol":"verdulería"},{"kana":"やさい","tipo":"hiragana","romaji":"yasai","espanol":"verdura"},{"kana":"やさしい","tipo":"hiragana","romaji":"yasashii","espanol":"fácil / amable"},{"kana":"やすい","tipo":"hiragana","romaji":"yasui","espanol":"barato"},{"kana":"やすみ","tipo":"hiragana","romaji":"yasumi","espanol":"descanso"},{"kana":"やすむ","tipo":"hiragana","romaji":"yasumu","espanol":"descansar"},{"kana":"やっつ","tipo":"hiragana","romaji":"yattsu","espanol":"ocho (objetos)"},{"kana":"やま","tipo":"hiragana","romaji":"yama","espanol":"montaña"},{"kana":"やる","tipo":"hiragana","romaji":"yaru","espanol":"hacer"},{"kana":"ゆうがた","tipo":"hiragana","romaji":"yuugata","espanol":"tarde"},{"kana":"ゆうびん","tipo":"hiragana","romaji":"yuubin","espanol":"correo"},{"kana":"ゆうびんきょく","tipo":"hiragana","romaji":"yuubinkyoku","espanol":"oficina de correos"},{"kana":"ゆうべ","tipo":"hiragana","romaji":"yuube","espanol":"anoche"},{"kana":"ゆき","tipo":"hiragana","romaji":"yuki","espanol":"nieve"},{"kana":"ゆっくり","tipo":"hiragana","romaji":"yukkuri","espanol":"despacio"},{"kana":"ようか","tipo":"hiragana","romaji":"youka","espanol":"día ocho"},{"kana":"ようふく","tipo":"hiragana","romaji":"youfuku","espanol":"ropa occidental"},{"kana":"よく","tipo":"hiragana","romaji":"yoku","espanol":"bien / frecuentemente"},{"kana":"よこ","tipo":"hiragana","romaji":"yoko","espanol":"lado"},{"kana":"よっか","tipo":"hiragana","romaji":"yokka","espanol":"día cuatro"},{"kana":"よぶ","tipo":"hiragana","romaji":"yobu","espanol":"llamar"},{"kana":"よむ","tipo":"hiragana","romaji":"yomu","espanol":"leer"},{"kana":"よる","tipo":"hiragana","romaji":"yoru","espanol":"noche"},{"kana":"よわい","tipo":"hiragana","romaji":"yowai","espanol":"débil"},{"kana":"らいげつ","tipo":"hiragana","romaji":"raigetsu","espanol":"mes que viene"},{"kana":"らいしゅう","tipo":"hiragana","romaji":"raishuu","espanol":"semana que viene"},{"kana":"らいねん","tipo":"hiragana","romaji":"rainen","espanol":"año que viene"},{"kana":"ラジオ","tipo":"katakana","romaji":"rajio","espanol":"radio"},{"kana":"りっぱ","tipo":"hiragana","romaji":"rippa","espanol":"excelente"},{"kana":"りゅうがくせい","tipo":"hiragana","romaji":"ryuugakusei","espanol":"estudiante extranjero"},{"kana":"りょうしん","tipo":"hiragana","romaji":"ryoushin","espanol":"padres"},{"kana":"りょうり","tipo":"hiragana","romaji":"ryouri","espanol":"comida / cocina"},{"kana":"りょこう","tipo":"hiragana","romaji":"ryokou","espanol":"viaje"},{"kana":"りんご","tipo":"hiragana","romaji":"ringo","espanol":"manzana"},{"kana":"れい","tipo":"hiragana","romaji":"rei","espanol":"cero"},{"kana":"れいぞうこ","tipo":"hiragana","romaji":"reizouko","espanol":"heladera"},{"kana":"レコード","tipo":"katakana","romaji":"rekōdo","espanol":"disco"},{"kana":"レストラン","tipo":"katakana","romaji":"resutoran","espanol":"restaurante"},{"kana":"れんしゅう","tipo":"hiragana","romaji":"renshuu","espanol":"práctica"},{"kana":"ろく","tipo":"hiragana","romaji":"roku","espanol":"seis"},{"kana":"ワイシャツ","tipo":"katakana","romaji":"waishatsu","espanol":"camisa"},{"kana":"わかい","tipo":"hiragana","romaji":"wakai","espanol":"joven"},{"kana":"わかる","tipo":"hiragana","romaji":"wakaru","espanol":"entender"},{"kana":"わすれる","tipo":"hiragana","romaji":"wasureru","espanol":"olvidar"},{"kana":"わたし","tipo":"hiragana","romaji":"watashi","espanol":"yo"},{"kana":"わたす","tipo":"hiragana","romaji":"watasu","espanol":"entregar"},{"kana":"わたる","tipo":"hiragana","romaji":"wataru","espanol":"cruzar"},{"kana":"わるい","tipo":"hiragana","romaji":"warui","espanol":"malo"},{"kana":"～じ","tipo":"hiragana","romaji":"～ji","espanol":"~hora"},{"kana":"～ふん","tipo":"hiragana","romaji":"～fun","espanol":"~minuto"},{"kana":"～にん","tipo":"hiragana","romaji":"～nin","espanol":"~persona(s)"},{"kana":"～さい","tipo":"hiragana","romaji":"～sai","espanol":"~años de edad"},{"kana":"～つ","tipo":"hiragana","romaji":"～tsu","espanol":"contador general"},{"kana":"～かい","tipo":"hiragana","romaji":"～kai","espanol":"piso (contador)"},{"kana":"～まい","tipo":"hiragana","romaji":"～mai","espanol":"contador de objetos planos"},{"kana":"～ほん","tipo":"hiragana","romaji":"～hon","espanol":"contador de objetos largos"},{"kana":"～ひき","tipo":"hiragana","romaji":"～hiki","espanol":"contador de animales pequeños"},{"kana":"～だい","tipo":"hiragana","romaji":"～dai","espanol":"contador de máquinas"},{"kana":"～こ","tipo":"hiragana","romaji":"～ko","espanol":"contador de objetos pequeños"},{"kana":"～さつ","tipo":"hiragana","romaji":"～satsu","espanol":"contador de libros"},{"kana":"～しゅう","tipo":"hiragana","romaji":"～shuu","espanol":"semana"},{"kana":"～げつ","tipo":"hiragana","romaji":"～getsu","espanol":"mes"},{"kana":"～ねん","tipo":"hiragana","romaji":"～nen","espanol":"año"},{"kana":"～ばん","tipo":"hiragana","romaji":"～ban","espanol":"número"},{"kana":"～ご","tipo":"hiragana","romaji":"～go","espanol":"idioma"},{"kana":"～えん","tipo":"hiragana","romaji":"～en","espanol":"yen"},{"kana":"～じかん","tipo":"hiragana","romaji":"～jikan","espanol":"horas (duración)"},{"kana":"～ぶん","tipo":"hiragana","romaji":"～bun","espanol":"minutos (duración)"},{"kana":"～から","tipo":"hiragana","romaji":"～kara","espanol":"desde"},{"kana":"～まで","tipo":"hiragana","romaji":"～made","espanol":"hasta"},{"kana":"～と","tipo":"hiragana","romaji":"～to","espanol":"con / y"},{"kana":"～や","tipo":"hiragana","romaji":"～ya","espanol":"y (lista incompleta)"},{"kana":"～の","tipo":"hiragana","romaji":"～no","espanol":"de"},{"kana":"～へ","tipo":"hiragana","romaji":"～e","espanol":"hacia"},{"kana":"～で","tipo":"hiragana","romaji":"～de","espanol":"en / con"},{"kana":"～に","tipo":"hiragana","romaji":"～ni","espanol":"a / en"},{"kana":"～を","tipo":"hiragana","romaji":"～o","espanol":"objeto directo"},{"kana":"～が","tipo":"hiragana","romaji":"～ga","espanol":"sujeto"},{"kana":"～は","tipo":"hiragana","romaji":"～wa","espanol":"tema"},{"kana":"～も","tipo":"hiragana","romaji":"～mo","espanol":"también"},{"kana":"～ね","tipo":"hiragana","romaji":"～ne","espanol":"¿verdad?"},{"kana":"～よ","tipo":"hiragana","romaji":"～yo","espanol":"énfasis"},{"kana":"～か","tipo":"hiragana","romaji":"～ka","espanol":"¿?"},{"kana":"そして","tipo":"hiragana","romaji":"soshite","espanol":"y entonces"},{"kana":"それで","tipo":"hiragana","romaji":"sorede","espanol":"por eso"},{"kana":"だから","tipo":"hiragana","romaji":"dakara","espanol":"porque / por eso"},{"kana":"けれども","tipo":"hiragana","romaji":"keredomo","espanol":"sin embargo"},{"kana":"ときどき","tipo":"hiragana","romaji":"tokidoki","espanol":"a veces"},{"kana":"よく","tipo":"hiragana","romaji":"yoku","espanol":"a menudo"},{"kana":"ぜんぜん","tipo":"hiragana","romaji":"zenzen","espanol":"para nada"},{"kana":"たくさん","tipo":"hiragana","romaji":"takusan","espanol":"mucho"},{"kana":"いちど","tipo":"hiragana","romaji":"ichido","espanol":"una vez"},{"kana":"にど","tipo":"hiragana","romaji":"nido","espanol":"dos veces"},{"kana":"さんど","tipo":"hiragana","romaji":"sando","espanol":"tres veces"},{"kana":"ひとりで","tipo":"hiragana","romaji":"hitoride","espanol":"solo"},{"kana":"みんなで","tipo":"hiragana","romaji":"minnade","espanol":"todos juntos"},{"kana":"はやく","tipo":"hiragana","romaji":"hayaku","espanol":"rápidamente"},{"kana":"あとで","tipo":"hiragana","romaji":"atode","espanol":"después"},{"kana":"さきに","tipo":"hiragana","romaji":"sakini","espanol":"primero"},{"kana":"いっしょに","tipo":"hiragana","romaji":"isshoni","espanol":"juntos"},{"kana":"べつに","tipo":"hiragana","romaji":"betsuni","espanol":"no particularmente"},{"kana":"ほんとうに","tipo":"hiragana","romaji":"hontouni","espanol":"realmente"},{"kana":"きっと","tipo":"hiragana","romaji":"kitto","espanol":"seguramente"},{"kana":"ぜひ","tipo":"hiragana","romaji":"zehi","espanol":"por favor / sin falta"},{"kana":"おめでとう","tipo":"hiragana","romaji":"omedetou","espanol":"felicidades"}];
+/* ================================================================ */
+
+const $ = (id) => document.getElementById(id);
+const conf = { pares: 8, tipo: "todos", modo: "clasico", romaji: "si", voz: "si" };
+
+let cartas = [], elegidas = [], abiertas = [], bloqueado = false;
+let encontrados = 0, intentos = 0, inicio = 0, reloj = null;
+
+$("total").textContent = PALABRAS.length;
+
+/* ---------- menú ---------- */
+document.querySelectorAll(".opciones").forEach((grupo) => {
+  grupo.addEventListener("click", (e) => {
+    const b = e.target.closest(".op");
+    if (!b) return;
+    grupo.querySelectorAll(".op").forEach((x) => x.classList.toggle("activo", x === b));
+    conf[grupo.dataset.opcion] = b.dataset.v;
+    actualizarAyuda();
+  });
+});
+
+function actualizarAyuda() {
+  $("ayudaModo").textContent = conf.modo === "clasico"
+    ? "Las dos cartas del par son iguales (como las impresas)."
+    : "Juntá la palabra japonesa con su significado en español.";
+  $("grupoRomaji").classList.toggle("oculto", conf.modo !== "aprender");
+  $("ayudaVoz").textContent = hayVozJapones() ? "" :
+    "Tu PC no tiene voz en japonés instalada: el juego funciona igual, pero sin sonido.";
+}
+
+/* ---------- voz ---------- */
+function vozJapones() {
+  if (!("speechSynthesis" in window)) return null;
+  return speechSynthesis.getVoices().find((v) => v.lang && v.lang.toLowerCase().startsWith("ja")) || null;
+}
+function hayVozJapones() { return !!vozJapones(); }
+if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = actualizarAyuda;
+function decir(texto) {
+  const v = vozJapones();
+  if (conf.voz !== "si" || !v) return;
+  const u = new SpeechSynthesisUtterance(texto.replace(/^～/, ""));
+  u.voice = v; u.lang = v.lang; u.rate = 0.85;
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
+}
+
+/* ---------- partida ---------- */
+function mezclar(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function elegirPalabras(n) {
+  const pool = mezclar(PALABRAS.filter((p) => conf.tipo === "todos" || p.tipo === conf.tipo));
+  const vistos = new Set(), vistosEs = new Set(), res = [];
+  for (const p of pool) {
+    // no repetir kana (あつい...) ni significado (en modo aprender confunde)
+    if (vistos.has(p.kana) || vistosEs.has(p.espanol)) continue;
+    vistos.add(p.kana); vistosEs.add(p.espanol); res.push(p);
+    if (res.length === n) break;
+  }
+  return res;
+}
+
+function nuevaPartida() {
+  elegidas = elegirPalabras(Number(conf.pares));
+  cartas = [];
+  elegidas.forEach((p, i) => {
+    if (conf.modo === "clasico") {
+      cartas.push({ par: i, lado: "a" }, { par: i, lado: "b" });
+    } else {
+      cartas.push({ par: i, lado: "jp" }, { par: i, lado: "es" });
+    }
+  });
+  mezclar(cartas);
+  abiertas = []; bloqueado = false; encontrados = 0; intentos = 0;
+  clearInterval(reloj); inicio = 0; $("vTiempo").textContent = "0:00";
+  dibujarTablero(); actualizarBarra();
+  $("menu").classList.add("oculto"); $("final").classList.add("oculto");
+  $("barra").classList.remove("oculto"); $("zona").classList.remove("oculto");
+  ajustarTamano();
+}
+
+function contenidoCarta(c) {
+  const p = elegidas[c.par];
+  const kana = `<div class="kana">${p.kana}</div>`;
+  const romaji = `<div class="romaji">${p.romaji}</div>`;
+  const es = `<div class="es">${p.espanol}</div>`;
+  if (c.lado === "es") return es;
+  if (c.lado === "jp") return kana + (conf.romaji === "si" ? romaji : "");
+  return kana + romaji + es;
+}
+
+function dibujarTablero() {
+  const t = $("tablero");
+  t.innerHTML = "";
+  cartas.forEach((c, i) => {
+    const b = document.createElement("button");
+    b.className = "carta";
+    b.setAttribute("aria-label", "carta");
+    b.innerHTML = `<div class="giro"><div class="cara dorso"></div>
+      <div class="cara frente ${c.lado === "es" ? "solo-es" : ""}">${contenidoCarta(c)}</div></div>`;
+    b.addEventListener("click", () => tocar(i, b));
+    c.el = b;
+    t.appendChild(b);
+  });
+}
+
+function tocar(i, el) {
+  const c = cartas[i];
+  if (bloqueado || c.hecha || abiertas.includes(c)) return;
+  if (!inicio) { inicio = Date.now(); reloj = setInterval(actualizarReloj, 500); }
+  el.classList.add("vista");
+  abiertas.push(c);
+  if (conf.modo === "clasico" || c.lado === "jp") {
+    if (abiertas.length === 1) decir(elegidas[c.par].kana);
+  }
+  if (abiertas.length < 2) return;
+
+  intentos++;
+  const [a, b] = abiertas;
+  if (a.par === b.par) {
+    a.hecha = b.hecha = true;
+    a.el.classList.add("hecha"); b.el.classList.add("hecha");
+    encontrados++; abiertas = [];
+    decir(elegidas[a.par].kana);
+    actualizarBarra();
+    if (encontrados === elegidas.length) setTimeout(terminar, 600);
+  } else {
+    bloqueado = true;
+    actualizarBarra();
+    setTimeout(() => {
+      a.el.classList.remove("vista"); b.el.classList.remove("vista");
+      abiertas = []; bloqueado = false;
+    }, 1000);
+  }
+}
+
+function actualizarBarra() {
+  $("vPares").textContent = `${encontrados}/${elegidas.length}`;
+  $("vIntentos").textContent = intentos;
+}
+function formatoTiempo(ms) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+function actualizarReloj() { $("vTiempo").textContent = formatoTiempo(Date.now() - inicio); }
+
+/* ---------- récords (se guardan en este navegador) ---------- */
+function leerRecords() { try { return JSON.parse(localStorage.getItem("memotest-records") || "{}"); } catch { return {}; } }
+function guardarRecords(r) { try { localStorage.setItem("memotest-records", JSON.stringify(r)); } catch {} }
+
+function terminar() {
+  clearInterval(reloj);
+  const ms = Date.now() - inicio;
+  $("fIntentos").textContent = intentos;
+  $("fTiempo").textContent = formatoTiempo(ms);
+  $("fPrecision").textContent = Math.round((elegidas.length / intentos) * 100) + "%";
+
+  const clave = `${conf.modo}-${conf.pares}`;
+  const records = leerRecords();
+  const previo = records[clave];
+  const nombreModo = conf.modo === "clasico" ? "clásico" : "aprender";
+  if (!previo || intentos < previo.intentos || (intentos === previo.intentos && ms < previo.ms)) {
+    records[clave] = { intentos, ms }; guardarRecords(records);
+    $("fRecord").textContent = previo ? `¡Nuevo récord en ${conf.pares} pares (modo ${nombreModo})!` : "";
+  } else {
+    $("fRecord").textContent = `Récord en ${conf.pares} pares (modo ${nombreModo}): ${previo.intentos} intentos, ${formatoTiempo(previo.ms)}`;
+  }
+
+  $("fLista").innerHTML = elegidas
+    .map((p) => `<tr><td class="k">${p.kana}</td><td class="r">${p.romaji}</td><td>${p.espanol}</td></tr>`)
+    .join("");
+  $("final").classList.remove("oculto");
+}
+
+/* ---------- tamaño de cartas según la ventana ---------- */
+function ajustarTamano() {
+  const n = cartas.length;
+  if (!n) return;
+  const zona = $("zona");
+  const W = zona.clientWidth - 28, H = zona.clientHeight - 28, gap = 10, ratio = 1.15;
+  let mejor = { w: 0 };
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols);
+    const w = Math.min((W - gap * (cols - 1)) / cols, ((H - gap * (rows - 1)) / rows) / ratio);
+    if (w > mejor.w) mejor = { w, cols };
+  }
+  const w = Math.floor(Math.min(mejor.w, 220));
+  const t = $("tablero");
+  t.style.gridTemplateColumns = `repeat(${mejor.cols}, ${w}px)`;
+  t.style.setProperty("--w", w + "px");
+  t.style.setProperty("--h", Math.floor(w * ratio) + "px");
+  t.style.setProperty("--fk", Math.floor(w * 0.19) + "px");
+  t.style.setProperty("--fr", Math.max(11, Math.floor(w * 0.095)) + "px");
+  t.style.setProperty("--fe", Math.max(10, Math.floor(w * 0.085)) + "px");
+  // achicar el kana si una palabra larga no entra
+  requestAnimationFrame(() => {
+    const max = w * 0.86;
+    t.querySelectorAll(".kana, .es").forEach((k) => {
+      k.style.fontSize = "";
+      // la palabra más larga del texto tiene que entrar en el ancho de la carta
+      const prueba = document.createElement("span");
+      prueba.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap";
+      prueba.style.font = getComputedStyle(k).font;
+      const largas = k.classList.contains("kana") ? [k.textContent] : k.textContent.split(/\s+/);
+      let ancho = 0;
+      largas.forEach((txt) => { prueba.textContent = txt; document.body.appendChild(prueba);
+        ancho = Math.max(ancho, prueba.offsetWidth); prueba.remove(); });
+      if (ancho > max) k.style.fontSize = Math.floor(parseFloat(getComputedStyle(k).fontSize) * max / ancho) + "px";
+    });
+  });
+}
+window.addEventListener("resize", ajustarTamano);
+
+/* ---------- botones ---------- */
+$("jugar").onclick = nuevaPartida;
+$("reiniciar").onclick = nuevaPartida;
+$("otra").onclick = nuevaPartida;
+function irAlMenu() {
+  clearInterval(reloj);
+  ["barra", "zona", "final"].forEach((id) => $(id).classList.add("oculto"));
+  $("menu").classList.remove("oculto");
+}
+$("volver").onclick = irAlMenu;
+$("fMenu").onclick = irAlMenu;
+
+actualizarAyuda();
+</script>
+</body>
+</html>
