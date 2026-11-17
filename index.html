@@ -134,7 +134,15 @@
   .ficha b { font-family: var(--jp); font-size: 21px; font-weight: 700; line-height: 1.25; white-space: nowrap; }
   .ficha small { font-size: 12px; color: var(--suave); }
   .ficha.usada { visibility: hidden; }
-  .ficha.mal { border-color: var(--rojo); color: var(--rojo); }
+  .ficha.mal { border-color: var(--rojo); color: var(--rojo); background: #fbe9e7; position: relative; }
+  .ficha.mal::after { content: "✗"; position: absolute; top: -9px; right: -7px; background: var(--rojo); color: #fff;
+    border-radius: 50%; width: 18px; height: 18px; font-size: 11px; line-height: 18px; text-align: center; }
+  .ficha.ok { border-color: var(--verde); }
+  .fr-pista { background: #fff6e0; border: 1px solid #e8c766; border-radius: 8px; padding: 8px 12px; font-size: 14px; line-height: 1.45; }
+  .fr-pista:empty { display: none; }
+  .fr-intento { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--linea); }
+  .fr-intento .t { font-size: 13px; color: var(--suave); }
+  .fr-intento .jp span.x { color: var(--rojo); text-decoration: line-through; }
   .ficha:disabled { cursor: default; }
   .fr-linea.bien .ficha { border-color: var(--verde); }
   .fr-msj { min-height: 1.3em; font-size: 15px; color: var(--suave); }
@@ -265,6 +273,7 @@
     <div class="fr-linea" id="frLinea"></div>
     <div class="fr-banco" id="frBanco"></div>
     <div class="fr-msj" id="frMsj"></div>
+    <div class="fr-pista" id="frPista"></div>
     <div class="fr-nota oculto" id="frNota"></div>
     <div class="fr-botones">
       <button class="principal" id="frComprobar">Comprobar</button>
@@ -593,6 +602,8 @@ function terminar() {
 
 /* ---------- modo "Armá la frase" ---------- */
 let ronda = [], nFrase = 0, puestas = [], fichas = [], errores = 0, limpias = 0, fallo = false, resuelta = false;
+let intentosFrase = 0, ultimoIntento = null; // ultimoIntento = [{texto, mal}] del último intento equivocado
+const PARTICULAS = new Set(["は", "が", "を", "に", "で", "の", "と", "も", "へ", "か", "や", "から", "まで", "よ", "ね"]);
 const nombreTema = (t) => (TEMAS.find((x) => x[0] === t) || [, t])[1];
 
 function nuevaRonda() {
@@ -615,7 +626,8 @@ function mostrarFrase() {
     if (f.fichas.length < 2 || orden.map((i) => f.fichas[i]).join("") !== f.fichas.join("")) break;
   }
   fichas = orden.map((i) => ({ texto: f.fichas[i], romaji: f.romaji[i] }));
-  puestas = []; fallo = false; resuelta = false;
+  puestas = []; fallo = false; resuelta = false; intentosFrase = 0; ultimoIntento = null;
+  $("frPista").textContent = "";
   $("frTema").textContent = nombreTema(f.tema);
   $("frEs").textContent = f.espanol;
   $("frMsj").textContent = ""; $("frMsj").className = "fr-msj";
@@ -635,7 +647,7 @@ function dibujarFichas(malas) {
   linea.classList.toggle("bien", resuelta);
   puestas.forEach((idx, pos) => {
     const b = document.createElement("button");
-    b.className = "ficha" + (malas && malas.has(pos) ? " mal" : "");
+    b.className = "ficha" + (malas ? (malas.has(pos) ? " mal" : " ok") : "");
     b.innerHTML = htmlFicha(fichas[idx]);
     b.disabled = resuelta;
     b.onclick = () => { puestas.splice(pos, 1); limpiarMsj(); dibujarFichas(); };
@@ -653,6 +665,37 @@ function dibujarFichas(malas) {
 }
 
 function limpiarMsj() { if (!resuelta) { $("frMsj").textContent = ""; $("frMsj").className = "fr-msj"; } }
+
+// Posiciones de "armada" que forman la secuencia común más larga con "correcta" (LCS):
+// esas fichas están bien ubicadas entre sí; las demás son las que sobran o están fuera de lugar.
+function posicionesBien(armada, correcta) {
+  const n = armada.length, m = correcta.length;
+  const t = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--)
+    for (let j = m - 1; j >= 0; j--)
+      t[i][j] = armada[i] === correcta[j] ? t[i + 1][j + 1] + 1 : Math.max(t[i + 1][j], t[i][j + 1]);
+  const bien = new Set();
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (armada[i] === correcta[j]) { bien.add(i); i++; j++; }
+    else if (t[i + 1][j] >= t[i][j + 1]) i++; else j++;
+  }
+  return bien;
+}
+
+// Explica qué tipo de error hay, para que no sea solo "está mal".
+function explicarError(armada, correcta, malas) {
+  const motivos = [];
+  const ultima = correcta[correcta.length - 1];
+  if (armada[armada.length - 1] !== ultima)
+    motivos.push(`En japonés la frase termina con el verbo o con です/か: acá el final es <b class="jp">${ultima}</b>.`);
+  const partMal = [...malas].map((p) => armada[p]).filter((t) => PARTICULAS.has(t));
+  if (partMal.length)
+    motivos.push(`Revisá las partículas (${[...new Set(partMal)].map((t) => `<b class="jp">${t}</b>`).join(", ")}): cada una va justo <b>después</b> de la palabra que marca.`);
+  if (!motivos.length)
+    motivos.push("El orden de las palabras no es el correcto. Pensá: tema + は → resto de la frase → verbo al final.");
+  return motivos;
+}
 function barraFrase() {
   $("vPares").textContent = `${Math.min(nFrase + 1, ronda.length)}/${ronda.length}`;
   $("vIntentos").textContent = errores;
@@ -666,9 +709,15 @@ function resolver(conAyuda) {
   fichas = f.fichas.map((t, i) => ({ texto: t, romaji: f.romaji[i] }));
   puestas = fichas.map((_, i) => i);
   dibujarFichas();
-  $("frMsj").textContent = conAyuda ? "Esta era la respuesta. Leela en voz alta antes de seguir." : "¡Bien! せいかい";
+  $("frMsj").textContent = conAyuda ? "Esta era la respuesta. Leela en voz alta antes de seguir."
+    : (fallo ? "¡Bien, lo corregiste! せいかい" : "¡Perfecto a la primera! せいかい");
   $("frMsj").className = "fr-msj " + (conAyuda ? "" : "ok");
-  $("frNota").innerHTML = `<div class="jp">${f.fichas.join("")}</div><div class="r">${f.romaji.join(" ")}</div>${f.nota}`;
+  $("frPista").textContent = "";
+  const intento = ultimoIntento
+    ? `<div class="fr-intento"><div class="t">Tu último intento (lo tachado era lo que estaba fuera de lugar):</div><div class="jp">${
+        ultimoIntento.map((x) => x.mal ? `<span class="x">${x.texto}</span>` : x.texto).join(" ")}</div><div class="t">Correcta:</div></div>`
+    : "";
+  $("frNota").innerHTML = `${intento}<div class="jp">${f.fichas.join("")}</div><div class="r">${f.romaji.join(" ")}</div>${f.nota}`;
   $("frNota").classList.remove("oculto");
   $("frComprobar").textContent = nFrase + 1 < ronda.length ? "Siguiente frase" : "Ver resultado";
   $("frBorrar").classList.add("oculto"); $("frVer").classList.add("oculto");
@@ -689,12 +738,21 @@ $("frComprobar").onclick = () => {
   const armada = puestas.map((i) => fichas[i].texto);
   const texto = armada.join("");
   if (texto === f.fichas.join("") || (f.alt || []).includes(texto)) return resolver(false);
-  errores++; fallo = true; barraFrase();
-  const malas = new Set();
-  armada.forEach((t, pos) => { if (t !== f.fichas[pos]) malas.add(pos); });
+  errores++; fallo = true; intentosFrase++; barraFrase();
+  const bien = posicionesBien(armada, f.fichas);
+  const malas = new Set(armada.map((_, p) => p).filter((p) => !bien.has(p)));
+  ultimoIntento = armada.map((t, p) => ({ texto: t, mal: malas.has(p) }));
   dibujarFichas(malas);
-  $("frMsj").textContent = "Casi. Las fichas en rojo no van en ese lugar: tocalas para sacarlas y probá de nuevo.";
+  const n = malas.size;
+  $("frMsj").textContent = `Hay ${n} ficha${n === 1 ? "" : "s"} fuera de lugar (en rojo con ✗). Las verdes ya están bien ordenadas.`;
   $("frMsj").className = "fr-msj no";
+  const motivos = explicarError(armada, f.fichas, malas);
+  // a partir del 2º intento, se agrega una pista concreta: la primera palabra que va mal
+  if (intentosFrase >= 2) {
+    const k = armada.findIndex((t, p) => t !== f.fichas[p]);
+    motivos.push(`Pista: la ficha número ${k + 1} tiene que ser <b class="jp">${f.fichas[k]}</b>.`);
+  }
+  $("frPista").innerHTML = "💡 " + motivos.join("<br>💡 ");
 };
 $("frBorrar").onclick = () => { puestas = []; limpiarMsj(); dibujarFichas(); };
 $("frVer").onclick = () => { if (!resuelta) { errores++; barraFrase(); resolver(true); } };
